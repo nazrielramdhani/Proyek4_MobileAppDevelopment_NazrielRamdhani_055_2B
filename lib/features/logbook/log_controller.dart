@@ -10,11 +10,10 @@ import 'package:logbook_app_001/services/mongo_service.dart';
 import 'package:logbook_app_001/helpers/log_helper.dart';
 
 class LogController {
-
   /// ===============================
   /// STATE
   /// ===============================
-  
+
   final ValueNotifier<List<LogModel>> logsNotifier = ValueNotifier([]);
 
   late final hive.Box<LogModel> _myBox;
@@ -41,7 +40,6 @@ class LogController {
   /// ===============================
 
   void startAutoSync(String teamId) {
-
     _connectionSub = _connectivity.onConnectivityChanged.listen((
       results,
     ) async {
@@ -56,7 +54,6 @@ class LogController {
         isOfflineNotifier.value = true;
       }
     });
-
   }
 
   /// ===============================
@@ -64,46 +61,34 @@ class LogController {
   /// ===============================
 
   Future<void> loadLogs(String teamId) async {
-
     /// tampilkan data lokal dulu
     logsNotifier.value = _myBox.values.toList();
 
     try {
-
       final cloudData = await _mongoService.getLogs(teamId);
 
       for (var cloudLog in cloudData) {
-
-        final index = _myBox.values
-            .toList()
-            .indexWhere((e) => e.id == cloudLog.id);
+        final index = _myBox.values.toList().indexWhere(
+          (e) => e.id == cloudLog.id,
+        );
 
         if (index == -1) {
-
           /// data baru dari cloud
           await _myBox.add(cloudLog);
-
         } else {
-
           final localLog = _myBox.getAt(index);
 
           /// hanya overwrite jika local sudah synced
           if (localLog != null && localLog.isSynced) {
-
             await _myBox.putAt(index, cloudLog);
-
           }
-
         }
-
       }
 
       logsNotifier.value = _myBox.values.toList();
 
       isOfflineNotifier.value = false;
-
     } catch (e) {
-
       isOfflineNotifier.value = true;
 
       await LogHelper.writeLog(
@@ -111,9 +96,7 @@ class LogController {
         source: "log_controller.dart",
         level: 2,
       );
-
     }
-
   }
 
   /// ===============================
@@ -126,7 +109,6 @@ class LogController {
     String authorId,
     String teamId,
   ) async {
-
     final newLog = LogModel(
       id: ObjectId().oid,
       title: title,
@@ -140,12 +122,13 @@ class LogController {
 
     await _myBox.add(newLog);
 
+    final key = await _myBox.add(newLog);
     logsNotifier.value = [...logsNotifier.value, newLog];
 
     /// coba sync langsung
     try {
-
       await _mongoService.insertLog(newLog);
+      print("INSERT SUCCESS - isSynced akan di-update");
 
       final syncedLog = LogModel(
         id: newLog.id,
@@ -158,19 +141,19 @@ class LogController {
         syncAction: "none",
       );
 
-      await _myBox.putAt(_myBox.length - 1, syncedLog);
+      await _myBox.put(key, syncedLog);
+      print("HIVE UPDATED - key: $key");
+
       logsNotifier.value = _myBox.values.toList();
-
+      print("NOTIFIER UPDATED: ${logsNotifier.value.map((e) => e.isSynced)}");
     } catch (e) {
-
+      print("CATCH ERROR: $e");
       await LogHelper.writeLog(
         "CREATE OFFLINE",
         source: "log_controller.dart",
         level: 1,
       );
-
     }
-
   }
 
   /// ===============================
@@ -180,8 +163,8 @@ class LogController {
     int index,
     String title,
     String desc,
-    String authorId, 
-    String teamId, 
+    String authorId,
+    String teamId,
   ) async {
     final oldLog = logsNotifier.value[index];
 
@@ -209,7 +192,6 @@ class LogController {
   /// ===============================
 
   Future<void> removeLog(int index) async {
-
     final log = logsNotifier.value[index];
 
     final deletedLog = LogModel(
@@ -226,17 +208,17 @@ class LogController {
     await _myBox.putAt(index, deletedLog);
 
     logsNotifier.value = _myBox.values
-      .where((e) => e.syncAction != "delete")
-      .toList();
+        .where((e) => e.syncAction != "delete")
+        .toList();
 
     try {
       await _mongoService.deleteLog(log.id!);
-      
+
       await _myBox.deleteAt(index);
     } catch (e) {
       await LogHelper.writeLog(
         "DELETE OFFLINE",
-        source:"log_controller.dart",
+        source: "log_controller.dart",
         level: 1,
       );
     }
@@ -328,11 +310,11 @@ class LogController {
   }
 
   /// ===============================
-  /// DISPOSE 
+  /// DISPOSE
   /// ===============================
   void dispose() {
     _connectionSub.cancel();
     logsNotifier.dispose();
-    isOfflineNotifier.dispose(); 
+    isOfflineNotifier.dispose();
   }
 }

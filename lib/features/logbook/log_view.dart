@@ -6,6 +6,7 @@ import 'package:logbook_app_001/features/logbook/log_editor_page.dart';
 import 'package:logbook_app_001/features/logbook/models/log_model.dart';
 import 'package:logbook_app_001/services/access_control_service.dart';
 import 'package:logbook_app_001/features/onboarding/onboarding_view.dart';
+import 'package:logbook_app_001/features/vision/vision_view.dart';
 
 class LogView extends StatefulWidget {
   final dynamic currentUser;
@@ -144,7 +145,6 @@ class _LogViewState extends State<LogView> {
   /// HUMAN FRIENDLY DATE
   /// ===============================
   String _formatDate(String dateString) {
-
     final date = DateTime.parse(dateString);
     final now = DateTime.now();
     final diff = now.difference(date);
@@ -170,7 +170,6 @@ class _LogViewState extends State<LogView> {
     }
 
     return DateFormat("dd MMM yyyy", "id_ID").format(date);
-
   }
 
   /// ===============================
@@ -350,6 +349,16 @@ class _LogViewState extends State<LogView> {
       appBar: AppBar(
         title: Text("Logbook: ${widget.currentUser['username']}"),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.camera_alt),
+            tooltip: "Smart Patrol",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const VisionView()),
+              );
+            },
+          ),
           IconButton(icon: const Icon(Icons.logout), onPressed: _confirmLogout),
         ],
       ),
@@ -374,7 +383,7 @@ class _LogViewState extends State<LogView> {
 
   @override
   void dispose() {
-    _controller.dispose(); 
+    _controller.dispose();
     super.dispose();
   }
 }
